@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from database import Base
 
-EMBEDDING_DIM = 1536  # matches text-embedding-3-small
+EMBEDDING_DIM = 1536
 
 
 class Character(Base):
@@ -25,9 +25,9 @@ class Materia(Base):
     name = Column(String, unique=True, nullable=False)
     type = Column(String, nullable=False)    # magic | support | command | independent | summon
     description = Column(Text)
-    pairs_well_with = Column(String)         # comma separated materia names, for linked-slot logic
+    pairs_well_with = Column(String)         # comma separating materia names
     ap_to_master = Column(Integer)
-    stat_effects = Column(String)            # e.g. "+MP, -HP" freeform
+    stat_effects = Column(String)           
     story_stage = Column(String, default="early")  # early | mid | late — earliest point it's obtainable
 
 
@@ -36,21 +36,17 @@ class Equipment(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
-    slot_type = Column(String, nullable=False)  # weapon | armor | accessory
-    character_name = Column(String)              # null/blank if usable by anyone
+    slot_type = Column(String, nullable=False)  # weapon | armour | accessory
+    character_name = Column(String)              
     total_slots = Column(Integer, default=0)
     linked_slots = Column(Integer, default=0)
-    growth_rate = Column(String)                 # normal | growth | double growth
+    growth_rate = Column(String)              
     notes = Column(Text)
     story_stage = Column(String, default="early")  # early | mid | late — earliest point it's obtainable
 
 
 class SynergyNote(Base):
-    """
-    Curated strategy write-ups used for retrieval-augmented generation.
-    Each row is a short paragraph about a team synergy pattern, embedded
-    with the OpenAI embeddings API and searched via pgvector cosine distance.
-    """
+
     __tablename__ = "synergy_notes"
 
     id = Column(Integer, primary_key=True)

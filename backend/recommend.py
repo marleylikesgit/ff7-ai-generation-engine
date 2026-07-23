@@ -1,13 +1,4 @@
-"""
-Hybrid recommendation pipeline:
 
-1. Pull real character/materia/equipment facts from Postgres (source of truth,
-   no hallucinated stats).
-2. Embed the party query and retrieve the most relevant curated synergy notes
-   from pgvector via cosine distance.
-3. Hand both to the OpenAI chat model and ask it to synthesize a loadout
-   recommendation per character, grounded only in the provided facts.
-"""
 import json
 from sqlalchemy.orm import Session
 from sqlalchemy import select
