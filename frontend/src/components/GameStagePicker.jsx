@@ -14,6 +14,9 @@ export default function GameStagePicker({ selectedStage, onChange }) {
         }
       })
       .finally(() => setLoading(false));
+    // Fetch stages once on mount; onChange/selectedStage are intentionally
+    // excluded so this doesn't re-run when the selection changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading) return null;

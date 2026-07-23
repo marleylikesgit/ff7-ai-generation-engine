@@ -23,7 +23,16 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-engine = create_engine(settings.DATABASE_URL)
+# Managed Postgres providers (Render, Heroku, etc.) hand out URLs using the
+# legacy "postgres://" scheme, which SQLAlchemy 2.0 no longer accepts. Normalise
+# it to the driver-qualified form so the same DATABASE_URL works everywhere.
+_db_url = settings.DATABASE_URL
+if _db_url.startswith("postgres://"):
+    _db_url = _db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+engine = create_engine(_db_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

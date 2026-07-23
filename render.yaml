@@ -1,0 +1,67 @@
+# Render Blueprint — deploys the whole app: Postgres (pgvector), the FastAPI
+# backend, and the React (CRA) frontend as a static site.
+#
+# First-time setup notes (see DEPLOY.md for the full walkthrough):
+#   * OPENAI_API_KEY is marked sync:false — set it in the Render dashboard.
+#   * FRONTEND_ORIGIN and REACT_APP_API_BASE_URL depend on the deployed URLs,
+#     so they're set manually after the first deploy (chicken-and-egg on URLs).
+#   * The database must be seeded once before the app works (it creates tables,
+#     enables the pgvector extension, and loads data). preDeployCommand is the
+#     tidy way to do this, but it is NOT available on Render's FREE instance
+#     type — so it's left commented below. On free tier, seed once manually
+#     (see DEPLOY.md: run seed_data.py against the External Database URL).
+#     seed_data.py is idempotent, so re-running it is cheap and safe.
+
+databases:
+  - name: ff7-db
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  # ---------- Backend: FastAPI ----------
+  - type: web
+    name: ff7-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Uncomment on a PAID instance to auto-seed on every deploy (idempotent):
+    # preDeployCommand: python seed_data.py
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ff7-db
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: OPENAI_CHAT_MODEL
+        value: gpt-4o-mini
+      # Set to the deployed frontend URL after first deploy, e.g.
+      # https://ff7-frontend.onrender.com
+      - key: FRONTEND_ORIGIN
+        sync: false
+
+  # ---------- Frontend: React (Create React App) static site ----------
+  - type: web
+    name: ff7-frontend
+    runtime: static
+    rootDir: frontend
+    # CI=false so react-scripts doesn't treat lint warnings as build errors
+    # (Render sets CI=true by default). Real compile errors still fail the build.
+    buildCommand: npm ci && CI=false npm run build
+    staticPublishPath: build
+    envVars:
+      # CRA inlines this at BUILD time. Set to the deployed backend URL, e.g.
+      # https://ff7-backend.onrender.com — then trigger a redeploy.
+      - key: REACT_APP_API_BASE_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -12,9 +12,20 @@ gameplay-planning purposes rather than a frame-perfect walkthrough):
   - late:  Temple of the Ancients onward, including postgame/superbosses
   
 """
+import os
+
+from sqlalchemy import text
+
 from database import engine, SessionLocal, Base
 from models import Character, Materia, Equipment, SynergyNote
 from embeddings import embed_text
+
+# The synergy_notes.embedding column needs the pgvector extension. Enable it
+# before create_all so a fresh managed database (e.g. Render Postgres) can build
+# the table. Requires the DB role to have permission to create extensions.
+with engine.connect() as conn:
+    conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    conn.commit()
 
 Base.metadata.create_all(bind=engine)
 
@@ -364,6 +375,14 @@ synergy_notes = [
 def run():
     db = SessionLocal()
     try:
+        # Idempotency guard: if the DB already has data, do nothing. This makes it
+        # safe to run on every deploy (e.g. as a Render preDeployCommand) without
+        # re-paying for embeddings or wiping the tables. Set RESEED=1 to force a
+        # full re-seed (deletes and re-embeds everything).
+        if os.getenv("RESEED") != "1" and db.query(Character).count() > 0:
+            print("Database already seeded; skipping. Set RESEED=1 to force.")
+            return
+
         db.query(SynergyNote).delete()
         db.query(Equipment).delete()
         db.query(Materia).delete()
